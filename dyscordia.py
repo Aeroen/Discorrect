@@ -11,7 +11,7 @@ import string
 from argparse import ArgumentParser
 from copy import deepcopy
 from json import dumps, loads
-from random import choice, randint, random
+from random import choice, randint, uniform
 from re import match
 from requests import Request, Session
 from sys import maxsize
@@ -22,6 +22,7 @@ DISCORD_BASE_URL = "https://discordapp.com/api/v6/channels/"
 DEFAULT_USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 " \
                      "(KHTML, like Gecko) discord/0.0.10 Chrome/78.0.3904.130 " \
                      "Electron/7.1.11 Safari/537.36"
+RAND_MIN, RAND_MAX = 0.5, 1.5 # Should sleep for 1s on average
 
 
 class Dyscordia:
@@ -52,30 +53,39 @@ class Dyscordia:
 
     def shred(self):
         while self.max_delete > self.amount_deleted:
+            vprint("Retrieving messages... ", end="", flush=True,
+                   verbose=self.verbose)
             messages = self.__retrieve()
+            vprint("done", verbose=self.verbose)
+
             parsed = self.__parse(messages)
+
+            if parsed is None:
+                break
 
             for ident, message in parsed:
                 if message:
                     vprint('Message "{}"... '.format(message), end="",
                            flush=True, verbose=self.verbose)
-                    sleep(random() * 2) # Should sleep for 1s on average
+                    sleep(uniform(RAND_MIN, RAND_MAX))
                     self.__overwrite(ident)
                     vprint("overwritten... ", end="", flush=True,
                            verbose=self.verbose)
-                    sleep(random() * 2)
+                    sleep(uniform(RAND_MIN, RAND_MAX))
                     self.__delete(ident)
                     vprint("and deleted!", verbose=self.verbose)
-                else: # Only a media
-                    sleep(random() * 2)
+                else: # Only a media, no text
+                    sleep(uniform(RAND_MIN, RAND_MAX))
                     self.__delete(ident)
                     vprint("Media deleted!", verbose=self.verbose)
 
                 if self.amount_deleted >= self.max_delete:
-                    print("Done: {} messages deleted".format(self.amount_deleted))
                     break
 
             print("Current restore point: {}".format(self.last_ident))
+            sleep(uniform(RAND_MIN, RAND_MAX))
+
+        print("Done: {} messages deleted".format(self.amount_deleted))
 
 
     def __headers(self):
@@ -124,6 +134,10 @@ class Dyscordia:
 
     def __parse(self, messages):
         unserialized = loads(messages)
+        
+        if not unserialized: # No more messages
+            return None
+
         self.last_ident = unserialized[-1]["id"]
         if self.is_numeric_user:
             return [(m["id"], m["content"]) for m in unserialized

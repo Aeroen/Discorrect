@@ -63,7 +63,7 @@ class Dyscordia:
             if parsed is None:
                 break
 
-            for ident, message in parsed:
+            for ident, message, attachments in parsed:
                 if message:
                     vprint('Message "{}"... '.format(message), end="",
                            flush=True, verbose=self.verbose)
@@ -74,7 +74,7 @@ class Dyscordia:
                     sleep(uniform(RAND_MIN, RAND_MAX))
                     self.__delete(ident)
                     vprint("and deleted!", verbose=self.verbose)
-                else: # Only a media, no text
+                elif attachments: # Only a media, without any text
                     sleep(uniform(RAND_MIN, RAND_MAX))
                     self.__delete(ident)
                     vprint("Media deleted!", verbose=self.verbose)
@@ -140,10 +140,11 @@ class Dyscordia:
 
         self.last_ident = unserialized[-1]["id"]
         if self.is_numeric_user:
-            return [(m["id"], m["content"]) for m in unserialized
-                    if m["author"]["id"] == self.user]
+            return [(m["id"], m["content"], bool(m["attachments"]))
+                    for m in unserialized if m["author"]["id"] == self.user]
         else:
-            return [(m["id"], m["content"]) for m in unserialized
+            return [(m["id"], m["content"], bool(m["attachments"]))
+                    for m in unserialized
                     if "{}#{}".format(m["author"]["username"],
                                       m["author"]["discriminator"]) == self.user]
 

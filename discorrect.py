@@ -2,11 +2,9 @@
 
 
 """
-    [Dyscordia - Message shredder for Discord - by Roen, 2020]
+    [Discorrect - Message shredder for Discord - by Roen, 2020]
 """
 
-
-import string
 
 from argparse import ArgumentParser
 from copy import deepcopy
@@ -14,18 +12,17 @@ from json import dumps, loads
 from random import choice, randint, uniform
 from re import match
 from requests import Request, Session
+from string import ascii_letters, digits, punctuation, whitespace
 from sys import maxsize
 from time import sleep
 
 
-DISCORD_BASE_URL = "https://discordapp.com/api/v6/channels/"
 DEFAULT_USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 " \
                      "(KHTML, like Gecko) discord/0.0.10 Chrome/78.0.3904.130 " \
                      "Electron/7.1.11 Safari/537.36"
-RAND_MIN, RAND_MAX = 0.5, 1.5 # Should sleep for 1s on average
 
 
-class Dyscordia:
+class Discorrect:
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -37,9 +34,16 @@ class Dyscordia:
         else:
             raise ValueError("Invalid user name or ID")
 
-        self.characters = string.ascii_letters + string.digits + \
-                          string.punctuation + string.whitespace
-        self.base_url = "{}{}/messages".format(DISCORD_BASE_URL, self.channel)
+        self.sleep_time = {
+            0: (1.5, 4.5),  # 3s on average
+            1: (1.0, 3.0),  # 2s on average
+            2: (0.5, 1.5),  # 1s on average
+            3: (0.25, 0.75) # 0.5s on average
+        }.get(self.speed, (0.25, 0.75)) # anything over 3 is still 3
+
+        self.characters = ascii_letters + digits + punctuation + whitespace
+        self.base_url = "https://discordapp.com" + \
+                        "/api/v6/channels/{}/messages".format(self.channel)
         self.last_ident = self.restore
         self.amount_deleted = 0
 
@@ -67,42 +71,49 @@ class Dyscordia:
                 if message:
                     vprint('Message "{}"... '.format(message), end="",
                            flush=True, verbose=self.verbose)
-                    sleep(uniform(RAND_MIN, RAND_MAX))
+                    sleep(uniform(*self.sleep_time))
                     self.__overwrite(ident)
                     vprint("overwritten... ", end="", flush=True,
                            verbose=self.verbose)
-                    sleep(uniform(RAND_MIN, RAND_MAX))
+                    sleep(uniform(*self.sleep_time))
                     self.__delete(ident)
                     vprint("and deleted!", verbose=self.verbose)
-                elif attachments: # Only a media, without any text
-                    sleep(uniform(RAND_MIN, RAND_MAX))
+                else:
+                    sleep(uniform(*self.sleep_time))
                     self.__delete(ident)
-                    vprint("Media deleted!", verbose=self.verbose)
+                    if attachments:
+                        # Only a media, without any text
+                        vprint("Media deleted!", verbose=self.verbose)
+                    else:
+                        # System message, e.g. starting a call or pinning message
+                        vprint("System message deleted! (if possible)",
+                               verbose=self.verbose)
+
 
                 if self.amount_deleted >= self.max_delete:
                     break
 
             print("Current restore point: {}".format(self.last_ident))
-            sleep(uniform(RAND_MIN, RAND_MAX))
+            sleep(uniform(*self.sleep_time))
 
         print("Done: {} messages deleted".format(self.amount_deleted))
 
 
     def __headers(self):
         self.base_headers = {
-                "authority": "discordapp.com",                    #  0
-                "x-super-properties": None,                       #  1
-                "origin": None,                                   #  2
-                "authorization": self.token,                      #  3
-                "accept-language": self.language,                 #  4
-                "user-agent": self.user_agent,                    #  5
-                "content-type": None,                             #  6
-                "accept": "*/*",                                  #  7
-                "sec-fetch-site": "same-origin",                  #  8
-                "sec-fetch-mode": "cors",                         #  9
-                "referer": "https://discordapp.com/channels/@me", # 10
-                "accept-encoding": "gzip, deflate, br",           # 11
-                "cookie": self.cookies                            # 12
+            "authority": "discordapp.com",                    #  0
+            "x-super-properties": None,                       #  1
+            "origin": None,                                   #  2
+            "authorization": self.token,                      #  3
+            "accept-language": self.language,                 #  4
+            "user-agent": self.user_agent,                    #  5
+            "content-type": None,                             #  6
+            "accept": "*/*",                                  #  7
+            "sec-fetch-site": "same-origin",                  #  8
+            "sec-fetch-mode": "cors",                         #  9
+            "referer": "https://discordapp.com/channels/@me", # 10
+            "accept-encoding": "gzip, deflate, br",           # 11
+            "cookie": self.cookies                            # 12
         }
         
         self.patch_headers = deepcopy(self.base_headers)
@@ -139,6 +150,7 @@ class Dyscordia:
             return None
 
         self.last_ident = unserialized[-1]["id"]
+
         if self.is_numeric_user:
             return [(m["id"], m["content"], bool(m["attachments"]))
                     for m in unserialized if m["author"]["id"] == self.user]
@@ -151,7 +163,7 @@ class Dyscordia:
 
     def __overwrite(self, ident):
         payload = dumps({"content": "".join((choice(self.characters)
-                                             for _ in range(randint(5, 250))))})
+                                             for _ in range(randint(5, 200))))})
         self.session.headers = self.patch_headers
         req = self.session.patch("{}/{}".format(self.base_url, ident),
                                                 data=payload)
@@ -163,7 +175,8 @@ class Dyscordia:
         self.session.headers = self.delete_headers
         req = self.session.delete("{}/{}".format(self.base_url, ident))
 
-        if req.status_code not in (200, 204):
+        if req.status_code not in (204, 403):
+            # 403 : can't delete "x started a call"
             raise ConnectionError("An error occurred while deleting a message")
 
         self.amount_deleted += 1
@@ -188,16 +201,19 @@ if __name__ == "__main__":
                              "messages deleted from")
     parser.add_argument("-r", "--restore", type=int,
                         help="ID of the last message seen (checkpoint)")
+    parser.add_argument("-s", "--speed", default=2, type=int,
+                        help="how short the pause between actions is " \
+                             "(default: 1s on average)")
     parser.add_argument("-m", "--max-delete", default=maxsize, type=int,
                         help="maximum amount of messages to delete")
     parser.add_argument("--super-properties",
                         help="informations about your system")
-    parser.add_argument("--language", default="en_GB",
+    parser.add_argument("--language", default="en-GB",
                         help="language used by Discord")
     parser.add_argument("--user-agent", default=DEFAULT_USER_AGENT,
                         help="Discord user agent")
     parser.add_argument("--cookies", help="cookies (__cfduid, __cfruid, locale)")
 
     args = parser.parse_args()
-    dys = Dyscordia(**vars(args))
-    dys.shred()
+    dis = Discorrect(**vars(args))
+    dis.shred()

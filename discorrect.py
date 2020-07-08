@@ -71,13 +71,16 @@ class Discorrect:
                 if message:
                     vprint('Message "{}"... '.format(message), end="",
                            flush=True, verbose=self.verbose)
-                    sleep(uniform(*self.sleep_time))
-                    self.__overwrite(ident)
-                    vprint("overwritten... ", end="", flush=True,
-                           verbose=self.verbose)
+
+                    if self.dont_overwrite == False:
+                        sleep(uniform(*self.sleep_time))
+                        self.__overwrite(ident)
+                        vprint("overwritten... and ", end="", flush=True,
+                               verbose=self.verbose)
+
                     sleep(uniform(*self.sleep_time))
                     self.__delete(ident)
-                    vprint("and deleted!", verbose=self.verbose)
+                    vprint("deleted!", verbose=self.verbose)
                 else:
                     sleep(uniform(*self.sleep_time))
                     self.__delete(ident)
@@ -204,6 +207,8 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--speed", default=2, type=int,
                         help="how short the pause between actions is " \
                              "(default: 1s on average)")
+    parser.add_argument("-d", "--dont-overwrite", action="store_true",
+                        help="don't overwrite before deletion")
     parser.add_argument("-m", "--max-delete", default=maxsize, type=int,
                         help="maximum amount of messages to delete")
     parser.add_argument("--super-properties",

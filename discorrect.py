@@ -7,7 +7,7 @@
 
 
 from argparse import ArgumentParser
-from copy import deepcopy
+from copy import copy
 from json import dumps, loads
 from random import choice, randint, uniform
 from re import match
@@ -18,8 +18,8 @@ from time import sleep
 
 
 DEFAULT_USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 " \
-                     "(KHTML, like Gecko) discord/0.0.10 Chrome/78.0.3904.130 " \
-                     "Electron/7.1.11 Safari/537.36"
+                     "(KHTML, like Gecko) discord/0.0.12 Chrome/78.0.3904.130 " \
+                     "Electron/7.3.2 Safari/537.36"
 
 
 class Discorrect:
@@ -43,7 +43,7 @@ class Discorrect:
 
         self.characters = ascii_letters + digits + punctuation + whitespace
         self.base_url = "https://discordapp.com" + \
-                        "/api/v6/channels/{}/messages".format(self.channel)
+                        "/api/v8/channels/{}/messages".format(self.channel)
         self.last_ident = self.restore
         self.amount_deleted = 0
 
@@ -103,9 +103,9 @@ class Discorrect:
 
 
     def __headers(self):
-        self.base_headers = {
+        self.get_headers = {
             "authority": "discordapp.com",                    #  0
-            "x-super-properties": None,                       #  1
+            "x-super-properties": self.super_properties,      #  1
             "origin": None,                                   #  2
             "authorization": self.token,                      #  3
             "accept-language": self.language,                 #  4
@@ -119,20 +119,10 @@ class Discorrect:
             "cookie": self.cookies                            # 12
         }
         
-        self.patch_headers = deepcopy(self.base_headers)
-        self.patch_headers["x-super-properties"] = self.super_properties
-        self.patch_headers["origin"] = "https://discordapp.com"
+        self.delete_headers = copy(self.get_headers)
+        self.delete_headers["origin"] = "https://discordapp.com"
+        self.patch_headers = copy(self.delete_headers)
         self.patch_headers["content-type"] = "application/json"
-
-        self.delete_headers = deepcopy(self.patch_headers)
-        self.delete_headers.pop("content-type")
-
-        self.get_headers = {k: v for k, v in deepcopy(self.base_headers).items()
-                            if v is not None}
-        self.patch_headers = {k: v for k, v in self.patch_headers.items()
-                              if v is not None}
-        self.delete_headers = {k: v for k, v in self.delete_headers.items()
-                               if v is not None}
 
 
     def __retrieve(self):
@@ -217,7 +207,7 @@ if __name__ == "__main__":
                         help="language used by Discord")
     parser.add_argument("--user-agent", default=DEFAULT_USER_AGENT,
                         help="Discord user agent")
-    parser.add_argument("--cookies", help="cookies (__cfduid, __cfruid, locale)")
+    parser.add_argument("--cookies", help="cookies (__cfduid and locale)")
 
     args = parser.parse_args()
     dis = Discorrect(**vars(args))

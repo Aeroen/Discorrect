@@ -17,9 +17,9 @@ from sys import maxsize
 from time import sleep
 
 
-DEFAULT_USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 " \
-                     "(KHTML, like Gecko) discord/0.0.12 Chrome/78.0.3904.130 " \
-                     "Electron/7.3.2 Safari/537.36"
+DEFAULT_USER_AGENT = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                      "(KHTML, like Gecko) discord/0.0.14 Chrome/83.0.4103.122 "
+                      "Electron/9.3.5 Safari/537.36")
 
 
 class Discorrect:
@@ -42,8 +42,8 @@ class Discorrect:
         }.get(self.speed, (0.25, 0.75)) # anything over 3 is still 3
 
         self.characters = ascii_letters + digits + punctuation + whitespace
-        self.base_url = "https://discordapp.com" + \
-                        "/api/v8/channels/{}/messages".format(self.channel)
+        self.base_url = ("https://discord.com/api/v9/channels/{}/messages"
+                         .format(self.channel))
         self.last_ident = self.restore
         self.amount_deleted = 0
 
@@ -104,23 +104,23 @@ class Discorrect:
 
     def __headers(self):
         self.get_headers = {
-            "authority": "discordapp.com",                    #  0
+            "authority": "discord.com",                       #  0
             "x-super-properties": self.super_properties,      #  1
-            "origin": None,                                   #  2
-            "authorization": self.token,                      #  3
-            "accept-language": self.language,                 #  4
-            "user-agent": self.user_agent,                    #  5
-            "content-type": None,                             #  6
-            "accept": "*/*",                                  #  7
+            "authorization": self.token,                      #  2 
+            "accept-language": self.language,                 #  3
+            "user-agent": self.user_agent,                    #  4
+            "content-type": None,                             #  5
+            "accept": "*/*",                                  #  6
+            "origin": None,                                   #  7
             "sec-fetch-site": "same-origin",                  #  8
             "sec-fetch-mode": "cors",                         #  9
-            "referer": "https://discordapp.com/channels/@me", # 10
-            "accept-encoding": "gzip, deflate, br",           # 11
+            "sec-fetch-dest": "empty",                        # 10
+            "referer": "https://discord.com/channels/@me",    # 11
             "cookie": self.cookies                            # 12
         }
         
         self.delete_headers = copy(self.get_headers)
-        self.delete_headers["origin"] = "https://discordapp.com"
+        self.delete_headers["origin"] = "https://discord.com"
         self.patch_headers = copy(self.delete_headers)
         self.patch_headers["content-type"] = "application/json"
 
@@ -190,13 +190,13 @@ if __name__ == "__main__":
     parser.add_argument("-t", "--token", required=True,
                         help="Discord token")
     parser.add_argument("-c", "--channel", required=True,
-                        help="ID of the Discord channel you want your " \
-                             "messages deleted from")
+                        help=("ID of the Discord channel you want your "
+                              "messages deleted from"))
     parser.add_argument("-r", "--restore", type=int,
                         help="ID of the last message seen (checkpoint)")
     parser.add_argument("-s", "--speed", default=2, type=int,
-                        help="how short the pause between actions is " \
-                             "(default: 1s on average)")
+                        help=("how short the pause between actions is "
+                              "(default: 1s on average)"))
     parser.add_argument("-d", "--dont-overwrite", action="store_true",
                         help="don't overwrite before deletion")
     parser.add_argument("-m", "--max-delete", default=maxsize, type=int,
@@ -207,7 +207,8 @@ if __name__ == "__main__":
                         help="language used by Discord")
     parser.add_argument("--user-agent", default=DEFAULT_USER_AGENT,
                         help="Discord user agent")
-    parser.add_argument("--cookies", help="cookies (__cfduid and locale)")
+    parser.add_argument("--cookies",
+                        help="cookies (locale, __cfduid, __dcfduid, ...)")
 
     args = parser.parse_args()
     dis = Discorrect(**vars(args))

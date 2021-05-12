@@ -7,6 +7,7 @@
 
 
 from argparse import ArgumentParser
+from brotli import decompress, error as BrotliError
 from copy import copy
 from json import dumps, loads
 from random import choice, randint, uniform
@@ -107,16 +108,17 @@ class Discorrect:
             "authority": "discord.com",                       #  0
             "x-super-properties": self.super_properties,      #  1
             "authorization": self.token,                      #  2 
-            "accept-language": self.language,                 #  3
-            "user-agent": self.user_agent,                    #  4
-            "content-type": None,                             #  5
-            "accept": "*/*",                                  #  6
-            "origin": None,                                   #  7
-            "sec-fetch-site": "same-origin",                  #  8
-            "sec-fetch-mode": "cors",                         #  9
-            "sec-fetch-dest": "empty",                        # 10
-            "referer": "https://discord.com/channels/@me",    # 11
-            "cookie": self.cookies                            # 12
+            "accept-encoding": "gzip, deflate, br",           #  3
+            "accept-language": self.language,                 #  4
+            "user-agent": self.user_agent,                    #  5
+            "content-type": None,                             #  6
+            "accept": "*/*",                                  #  7
+            "origin": None,                                   #  8
+            "sec-fetch-site": "same-origin",                  #  9
+            "sec-fetch-mode": "cors",                         # 10
+            "sec-fetch-dest": "empty",                        # 11
+            "referer": "https://discord.com/channels/@me",    # 12
+            "cookie": self.cookies                            # 13
         }
         
         self.delete_headers = copy(self.get_headers)
@@ -133,7 +135,10 @@ class Discorrect:
         if req.status_code != 200:
             raise ConnectionError("Could not retrieve any message")
 
-        return req.content
+        try:
+            return decompress(req.content)
+        except BrotliError:
+            return req.content
 
 
     def __parse(self, messages):

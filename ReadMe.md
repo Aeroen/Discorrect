@@ -3,7 +3,7 @@ Discorrect
 
 ### Disclaimer
 
-Such a script is able to control your Discord account as a whole. Therefore, several parameters are required (including your Discord token) while some others are optional and can be used in order to somewhat imitate how the desktop client works.   
+Such a script is able to control your Discord account as a whole. Therefore, several parameters are required (including your Discord token) while some others are optional and can be used in order to somewhat imitate how the desktop client works.  
 If you don't know how and where said parameters can be found, you're probably unable to check whether or not this script is going to send your data to a malicious server. In such a case, please do yourself a favor and don't use it.
 
 Using Discorrect might be against Discord's Terms of Service, I don't know, I haven't read those.  
@@ -12,7 +12,10 @@ This script is provided as is, without any warranty of any kind, etc; if you use
 
 ### Dependencies
 
-- requests : `pip3 install --user requests`  
+- requests  
+- brotli  
+
+With pip: `pip3 install --user requests brotli`  
 
 
 ### Q&A

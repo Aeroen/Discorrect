@@ -7,20 +7,21 @@
 
 
 from argparse import ArgumentParser
+from atexit import register
 from brotli import decompress, error as BrotliError
 from copy import copy
 from json import dumps, loads
 from random import choice, randint, uniform
 from re import match
-from requests import Request, Session
+from requests import Session
 from string import ascii_letters, digits, punctuation, whitespace
 from sys import maxsize
 from time import sleep
 
 
-DEFAULT_USER_AGENT = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                      "(KHTML, like Gecko) discord/0.0.14 Chrome/83.0.4103.122 "
-                      "Electron/9.3.5 Safari/537.36")
+DEFAULT_USER_AGENT = ("Mozilla/5.0 (X11; Linux x86_64) "
+                      "AppleWebKit/537.36 (KHTML, like Gecko) discord/0.0.20 "
+                      "Chrome/91.0.4472.164 Electron/13.6.6 Safari/537.36")
 
 
 class Discorrect:
@@ -36,11 +37,11 @@ class Discorrect:
             raise ValueError("Invalid user name or ID")
 
         self.sleep_time = {
-            0: (1.5, 4.5),  # 3s on average
-            1: (1.0, 3.0),  # 2s on average
-            2: (0.5, 1.5),  # 1s on average
-            3: (0.25, 0.75) # 0.5s on average
-        }.get(self.speed, (0.25, 0.75)) # anything over 3 is still 3
+            0: (3.50, 6.50),    # 5s on average
+            1: (2.75, 5.25),    # 4s on average
+            2: (2.25, 3.75),    # 3s on average
+            3: (1.50, 2.50)     # 2s on average
+        }.get(self.speed, (1.50, 2.50)) # anything over 3 is still 3
 
         self.characters = ascii_letters + digits + punctuation + whitespace
         self.base_url = ("https://discord.com/api/v9/channels/{}/messages"
@@ -48,6 +49,7 @@ class Discorrect:
         self.last_ident = self.restore
         self.amount_deleted = 0
 
+        register(self.__exit)
         self.session = Session()
         self.__headers()
 
@@ -100,6 +102,8 @@ class Discorrect:
             print("Current restore point: {}".format(self.last_ident))
             sleep(uniform(*self.sleep_time))
 
+
+    def __exit(self):
         print("Done: {} messages deleted".format(self.amount_deleted))
 
 
@@ -107,20 +111,21 @@ class Discorrect:
         self.get_headers = {
             "authority": "discord.com",                       #  0
             "x-super-properties": self.super_properties,      #  1
-            "authorization": self.token,                      #  2 
-            "accept-encoding": "gzip, deflate, br",           #  3
-            "accept-language": self.language,                 #  4
-            "user-agent": self.user_agent,                    #  5
-            "content-type": None,                             #  6
-            "accept": "*/*",                                  #  7
-            "origin": None,                                   #  8
-            "sec-fetch-site": "same-origin",                  #  9
-            "sec-fetch-mode": "cors",                         # 10
-            "sec-fetch-dest": "empty",                        # 11
-            "referer": "https://discord.com/channels/@me",    # 12
-            "cookie": self.cookies                            # 13
+            "x-discord-locale": self.language,                #  2
+            "authorization": self.token,                      #  3
+            "accept-encoding": "gzip, deflate, br",           #  4
+            "accept-language": self.language,                 #  5
+            "user-agent": self.user_agent,                    #  6
+            "content-type": None,                             #  7
+            "accept": "*/*",                                  #  8
+            "origin": None,                                   #  9
+            "sec-fetch-site": "same-origin",                  # 10
+            "sec-fetch-mode": "cors",                         # 11
+            "sec-fetch-dest": "empty",                        # 12
+            "referer": "https://discord.com/channels/@me",    # 13
+            "cookie": self.cookies                            # 14
         }
-        
+
         self.delete_headers = copy(self.get_headers)
         self.delete_headers["origin"] = "https://discord.com"
         self.patch_headers = copy(self.delete_headers)
@@ -143,7 +148,7 @@ class Discorrect:
 
     def __parse(self, messages):
         unserialized = loads(messages)
-        
+
         if not unserialized: # No more messages
             return None
 
@@ -201,7 +206,7 @@ if __name__ == "__main__":
                         help="ID of the last message seen (checkpoint)")
     parser.add_argument("-s", "--speed", default=2, type=int,
                         help=("how short the pause between actions is "
-                              "(default: 1s on average)"))
+                              "(default: 3s on average)"))
     parser.add_argument("-d", "--dont-overwrite", action="store_true",
                         help="don't overwrite before deletion")
     parser.add_argument("-m", "--max-delete", default=maxsize, type=int,
@@ -213,7 +218,7 @@ if __name__ == "__main__":
     parser.add_argument("--user-agent", default=DEFAULT_USER_AGENT,
                         help="Discord user agent")
     parser.add_argument("--cookies",
-                        help="cookies (locale, __cfduid, __dcfduid, ...)")
+                        help="cookies (locale, __cfduid, __dcfduid, etc.)")
 
     args = parser.parse_args()
     dis = Discorrect(**vars(args))

@@ -13,9 +13,8 @@ This script is provided as is, without any warranty of any kind, etc; if you use
 ### Dependencies
 
 - requests  
-- brotli  
 
-With pip: `pip3 install --user requests brotli`  
+With pip: `pip3 install --user requests`  
 
 
 ### Q&A

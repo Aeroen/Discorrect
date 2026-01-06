@@ -2,17 +2,15 @@
 
 
 """
-    [Discorrect - Message shredder for Discord - by Roen, 2020]
+    [Discorrect - Message shredder for Discord - by Roen, 2020-2026]
 """
 
 
 from argparse import ArgumentParser
 from atexit import register
-from brotli import decompress, error as BrotliError
 from copy import copy
 from json import dumps, loads
 from random import choice, randint, uniform
-from re import match
 from requests import Session
 from string import ascii_letters, digits, punctuation, whitespace
 from sys import maxsize
@@ -20,21 +18,14 @@ from time import sleep
 
 
 DEFAULT_USER_AGENT = ("Mozilla/5.0 (X11; Linux x86_64) "
-                      "AppleWebKit/537.36 (KHTML, like Gecko) discord/0.0.20 "
-                      "Chrome/91.0.4472.164 Electron/13.6.6 Safari/537.36")
+                      "AppleWebKit/537.36 (KHTML, like Gecko) discord/0.0.119 "
+                      "Chrome/138.0.7204.251 Electron/37.6.0 Safari/537.36")
 
 
 class Discorrect:
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
-
-        if self.user.isnumeric():
-            self.is_numeric_user = True
-        elif match(r"^.*#[\d]{4}$", self.user):
-            self.is_numeric_user = False
-        else:
-            raise ValueError("Invalid user name or ID")
 
         self.sleep_time = {
             0: (3.50, 6.50),    # 5s on average
@@ -109,21 +100,26 @@ class Discorrect:
 
     def __headers(self):
         self.get_headers = {
-            "authority": "discord.com",                       #  0
-            "x-super-properties": self.super_properties,      #  1
-            "x-discord-locale": self.language,                #  2
-            "authorization": self.token,                      #  3
-            "accept-encoding": "gzip, deflate, br",           #  4
-            "accept-language": self.language,                 #  5
-            "user-agent": self.user_agent,                    #  6
-            "content-type": None,                             #  7
-            "accept": "*/*",                                  #  8
-            "origin": None,                                   #  9
-            "sec-fetch-site": "same-origin",                  # 10
-            "sec-fetch-mode": "cors",                         # 11
-            "sec-fetch-dest": "empty",                        # 12
-            "referer": "https://discord.com/channels/@me",    # 13
-            "cookie": self.cookies                            # 14
+            "accept": "*/*",                                        #  0
+            "accept-language": self.language,                       #  1
+            "authorization": self.token,                            #  2
+            #"accept-encoding": None,                               #  3
+            "content-type": None,                                   #  4
+            "cookie": self.cookies,                                 #  5
+            "priority": "u=1, i",                                   #  6
+            "referer": "https://discord.com/channels/@me",          #  7
+            "origin": None,                                         #  8
+            "sec-ch-ua": '"Not)A;Brand";v="8", "Chromium";v="138"', #  9
+            "sec-ch-ua-mobile": "?0",                               # 10
+            "sec-ch-ua-platform": '"Linux"',                        # 11
+            "sec-fetch-dest": "empty",                              # 12
+            "sec-fetch-mode": "cors",                               # 13
+            "sec-fetch-site": "same-origin",                        # 14
+            "user-agent": self.user_agent,                          # 15
+            "x-debug-options": "bugReporterEnabled",                # 16
+            "x-discord-locale": self.locale,                        # 17
+            "x-discord-timezone": self.timezone,                    # 18
+            "x-super-properties": self.super_properties,            # 19
         }
 
         self.delete_headers = copy(self.get_headers)
@@ -140,10 +136,7 @@ class Discorrect:
         if req.status_code != 200:
             raise ConnectionError("Could not retrieve any message")
 
-        try:
-            return decompress(req.content)
-        except BrotliError:
-            return req.content
+        return req.content
 
 
     def __parse(self, messages):
@@ -154,14 +147,9 @@ class Discorrect:
 
         self.last_ident = unserialized[-1]["id"]
 
-        if self.is_numeric_user:
-            return [(m["id"], m["content"], bool(m["attachments"]))
-                    for m in unserialized if m["author"]["id"] == self.user]
-        else:
-            return [(m["id"], m["content"], bool(m["attachments"]))
-                    for m in unserialized
-                    if "{}#{}".format(m["author"]["username"],
-                                      m["author"]["discriminator"]) == self.user]
+        id_or_name = "id" if self.user.isnumeric() else "username"
+        return [(m["id"], m["content"], bool(m["attachments"]))
+                for m in unserialized if m["author"][id_or_name] == self.user]
 
 
     def __overwrite(self, ident):
@@ -196,7 +184,7 @@ if __name__ == "__main__":
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="increase output verbosity")
     parser.add_argument("-u", "--user", required=True,
-                        help="username (name#1234) or user ID")
+                        help="username or user ID")
     parser.add_argument("-t", "--token", required=True,
                         help="Discord token")
     parser.add_argument("-c", "--channel", required=True,
@@ -211,14 +199,18 @@ if __name__ == "__main__":
                         help="don't overwrite before deletion")
     parser.add_argument("-m", "--max-delete", default=maxsize, type=int,
                         help="maximum amount of messages to delete")
-    parser.add_argument("--super-properties",
-                        help="informations about your system")
-    parser.add_argument("--language", default="en-GB",
+    parser.add_argument("--language", default="en-GB,en;q=0.9,en;q=0.8",
                         help="language used by Discord")
+    parser.add_argument("--locale", default="en-GB",
+                        help="locale used by Discord")
+    parser.add_argument("--timezone", default="Europe/London",
+                        help="timezone used by Discord")
     parser.add_argument("--user-agent", default=DEFAULT_USER_AGENT,
                         help="Discord user agent")
     parser.add_argument("--cookies",
-                        help="cookies (locale, __cfduid, __dcfduid, etc.)")
+                        help="cookies (__dcfduid, __sdcfduid, etc.)")
+    parser.add_argument("--super-properties",
+                        help="informations about your system")
 
     args = parser.parse_args()
     dis = Discorrect(**vars(args))
